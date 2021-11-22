@@ -64,6 +64,10 @@ app.post("/api/signup", async (req, res, next) => {
      || typeof password !== "string" || password.length < 8 || password.length > 40) {
         return res.status(401).send("Bad login or password");
     }
+    try {
+        await User.findOne({login});
+        return res.status(401).send("This login already exists");
+    } catch (e) {}
     crypto.pbkdf2(password, login, 100, 64, 'sha512', (err, encrypted) => {
         if (err) {
             return res.status(500).send("Server error");
@@ -85,11 +89,7 @@ app.post("/api/signup", async (req, res, next) => {
                 return res.status(500).send("Server error");
             }
             let user = new User({login, password: encrypted, publicKey});
-            try {
-                await user.save();
-            } catch (e) {
-                return res.status(401).send("This login already exists");
-            }
+            await user.save();
             let token = jwt.sign({id: user._id}, config.JWT_SECRET, {expiresIn: "7d"});
             return res.status(200).send({token, privateKey: privateKey.toString()});
         });
