@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const config = require('./config');
 const jwt = require('jsonwebtoken');
 const User = require('./models/user');
+global.TextEncoder = require("util").TextEncoder;
 
 app.use(helmet());
 app.use(cors({
