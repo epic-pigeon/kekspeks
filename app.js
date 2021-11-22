@@ -95,7 +95,7 @@ app.post("/api/signup", async (req, res, next) => {
     });
 });
 
-app.post("api/send-message", async (req, res, next) => {
+app.post("/api/send-message", async (req, res, next) => {
     if (!req.user) return res.status(403).send("Unauthorized");
     const {to_login, text} = req.body;
     let toUser = await User.findOne({login: to_login});
