@@ -107,15 +107,20 @@ app.post("/api/signup", async (req, res, next) => {
 
 app.post("/api/send-message", async (req, res, next) => {
     if (!req.user) return res.status(403).send("Unauthorized");
-    const {to_login, text, signature} = req.body;
-    if (typeof to_login !== "string" || typeof text !== "string" || typeof signature !== "string") {
+    const {to_login, timestamp, text, signature} = req.body;
+    if (typeof to_login !== "string" || (typeof timestamp !== "string" && typeof timestamp !== "number")
+        || typeof text !== "string" || typeof signature !== "string") {
         return res.status(401).send("Bad request");
+    }
+    // NaN check!
+    if (!(Date.now() < +timestamp && +timestamp + 5 * 60 * 1000 > Date.now())) {
+        return res.status(401).send("Message expired");
     }
     let toUser = await User.findOne({login: to_login});
     if (!toUser) return res.status(401).send("Login not found");
     let verified = crypto.verify(
         "sha256",
-        Buffer.from(text),
+        Buffer.concat([Buffer.from((+timestamp) + ""), Buffer.from([0]), Buffer.from(text)]),
         req.user.signPublicKey,
         Buffer.from(signature, "base64")
     );
