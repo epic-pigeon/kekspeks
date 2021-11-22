@@ -113,7 +113,7 @@ app.post("/api/send-message", async (req, res, next) => {
         return res.status(401).send("Bad request");
     }
     // NaN check!
-    if (!(Date.now() < +timestamp && +timestamp + 5 * 60 * 1000 > Date.now())) {
+    if (!(Date.now() > +timestamp && +timestamp + 5 * 60 * 1000 > Date.now())) {
         return res.status(401).send("Message expired");
     }
     let toUser = await User.findOne({login: to_login});
