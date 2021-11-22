@@ -64,10 +64,8 @@ app.post("/api/signup", async (req, res, next) => {
      || typeof password !== "string" || password.length < 8 || password.length > 40) {
         return res.status(401).send("Bad login or password");
     }
-    try {
-        await User.findOne({login});
-        return res.status(401).send("This login already exists");
-    } catch (e) {}
+    let user = await User.findOne({login});
+    if (user) return res.status(401).send("This login already exists");
     crypto.pbkdf2(password, login, 100, 64, 'sha512', (err, encrypted) => {
         if (err) {
             return res.status(500).send("Server error");
