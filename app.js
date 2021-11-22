@@ -21,7 +21,7 @@ app.use(bodyParser.json());
 
 app.use(async (req, res, next) => {
     const accessToken = req.body['access_token'] || req.headers['x-access-token'];
-    if (accessToken) {
+    if (accessToken && typeof accessToken === "string") {
         try {
             const {id} = jwt.verify(accessToken, config.JWT_SECRET);
             req.user = await User.findById(id);
@@ -102,7 +102,7 @@ app.post("/api/send-message", async (req, res, next) => {
     let toUser = await User.findOne({login: to_login});
     if (!toUser) return res.status(401).send("Login not found");
     crypto.verify(
-        "sha512",
+        "hmac",
         text,
         req.user.publicKey,
         Buffer.from(signature, "base64"),
