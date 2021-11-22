@@ -67,7 +67,7 @@ app.post("/api/signup", async (req, res, next) => {
     }
     let user = await User.findOne({login});
     if (user) return res.status(401).send("This login already exists");
-    crypto.pbkdf2(password, login, 100, 64, 'sha512', (err, encrypted) => {
+    crypto.pbkdf2(password, login, 50_000, 64, 'sha512', (err, encrypted) => {
         if (err) {
             return res.status(500).send("Server error");
         }
@@ -79,9 +79,7 @@ app.post("/api/signup", async (req, res, next) => {
             },
             privateKeyEncoding: {
                 type: 'pkcs8',
-                format: 'pem',
-                cipher: 'aes-256-cbc',
-                passphrase: password,
+                format: 'pem'
             }
         }, async (err, publicKey, privateKey) => {
             if (err) {
@@ -97,18 +95,34 @@ app.post("/api/signup", async (req, res, next) => {
 
 app.post("/api/send-message", async (req, res, next) => {
     if (!req.user) return res.status(403).send("Unauthorized");
-    const {to_login, text} = req.body;
+    const {to_login, text, signature} = req.body;
+    if (typeof to_login !== "string" || typeof text !== "string" || typeof signature !== "string") {
+        return res.status(401).send("Bad request");
+    }
     let toUser = await User.findOne({login: to_login});
     if (!toUser) return res.status(401).send("Login not found");
-    let buffer = Buffer.from(text);
-    let encrypted = crypto.publicEncrypt(toUser.publicKey, buffer);
-    let messageObj = new Message({
-        fromLogin: req.user.login,
-        toLogin: toUser.login,
-        message: encrypted,
+    crypto.verify(
+        "sha512",
+        text,
+        req.user.publicKey,
+        Buffer.from(signature, "base64"),
+        async (err, res) => {
+            if (err) {
+                return res.status(500).send("Server error");
+            }
+            if (!res) {
+                return res.status(401).send("Bad signature");
+            }
+            let buffer = Buffer.from(text);
+            let encrypted = crypto.publicEncrypt(toUser.publicKey, buffer);
+            let messageObj = new Message({
+                fromLogin: req.user.login,
+                toLogin: toUser.login,
+                message: encrypted,
+            });
+            await messageObj.save();
+            return res.status(200).send("OK");
     });
-    await messageObj.save();
-    return res.status(200).send("OK");
 });
 
 app.use((req, res, next) => {
