@@ -81,14 +81,26 @@ app.post("/api/signup", async (req, res, next) => {
                 type: 'pkcs8',
                 format: 'pem'
             }
-        }, async (err, publicKey, privateKey) => {
-            if (err) {
-                return res.status(500).send("Server error");
-            }
-            let user = new User({login, password: encrypted.toString('hex'), publicKey});
-            await user.save();
-            let token = jwt.sign({id: user._id}, config.JWT_SECRET, {expiresIn: "7d"});
-            return res.status(200).send({token, privateKey: privateKey.toString()});
+        },  (err, signPublicKey, signPrivateKey) => {
+            crypto.generateKeyPair('rsa', {
+                modulusLength: 4096,
+                publicKeyEncoding: {
+                    type: 'spki',
+                    format: 'pem'
+                },
+                privateKeyEncoding: {
+                    type: 'pkcs8',
+                    format: 'pem'
+                }
+            }, async (err, messagePublicKey, messagePrivateKey) => {
+                if (err) {
+                    return res.status(500).send("Server error");
+                }
+                let user = new User({login, password: encrypted.toString('hex'), signPublicKey, messagePublicKey});
+                await user.save();
+                let token = jwt.sign({id: user._id}, config.JWT_SECRET, {expiresIn: "7d"});
+                return res.status(200).send({token, privateKeys: signPrivateKey + messagePrivateKey});
+            });
         });
     });
 });
@@ -104,7 +116,7 @@ app.post("/api/send-message", async (req, res, next) => {
     let verified = crypto.verify(
         "sha256",
         Buffer.from(text),
-        req.user.publicKey,
+        req.user.signPublicKey,
         Buffer.from(signature, "base64")
     );
     if (!verified) {
@@ -112,7 +124,7 @@ app.post("/api/send-message", async (req, res, next) => {
     }
     let buffer = Buffer.from(text);
     let encrypted = crypto.publicEncrypt({
-        key: toUser.publicKey,
+        key: toUser.messagePublicKey,
         oaepHash: "sha256"
     }, buffer);
     let messageObj = new Message({

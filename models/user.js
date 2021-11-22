@@ -10,7 +10,11 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    publicKey: {
+    signPublicKey: {
+        type: String,
+        required: true
+    },
+    messagePublicKey: {
         type: String,
         required: true
     },
