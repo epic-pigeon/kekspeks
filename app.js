@@ -101,28 +101,24 @@ app.post("/api/send-message", async (req, res, next) => {
     }
     let toUser = await User.findOne({login: to_login});
     if (!toUser) return res.status(401).send("Login not found");
-    crypto.verify(
-        "hmac",
-        text,
+    let verified = crypto.verify(
+        "sha256",
+        Buffer.from(text),
         req.user.publicKey,
-        Buffer.from(signature, "base64"),
-        async (err, res) => {
-            if (err) {
-                return res.status(500).send("Server error");
-            }
-            if (!res) {
-                return res.status(401).send("Bad signature");
-            }
-            let buffer = Buffer.from(text);
-            let encrypted = crypto.publicEncrypt(toUser.publicKey, buffer);
-            let messageObj = new Message({
-                fromLogin: req.user.login,
-                toLogin: toUser.login,
-                message: encrypted,
-            });
-            await messageObj.save();
-            return res.status(200).send("OK");
+        Buffer.from(signature, "base64")
+    );
+    if (!verified) {
+        return res.status(401).send("Bad signature");
+    }
+    let buffer = Buffer.from(text);
+    let encrypted = crypto.publicEncrypt(toUser.publicKey, buffer);
+    let messageObj = new Message({
+        fromLogin: req.user.login,
+        toLogin: toUser.login,
+        message: encrypted,
     });
+    await messageObj.save();
+    return res.status(200).send("OK");
 });
 
 app.use((req, res, next) => {
