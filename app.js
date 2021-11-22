@@ -85,7 +85,11 @@ app.post("/api/signup", async (req, res, next) => {
                 return res.status(500).send("Server error");
             }
             let user = new User({login, password: encrypted, publicKey});
-            await user.save();
+            try {
+                await user.save();
+            } catch (e) {
+                return res.status(401).send("This login already exists");
+            }
             let token = jwt.sign({id: user._id}, config.JWT_SECRET, {expiresIn: "7d"});
             return res.status(200).send({token, privateKey: privateKey.toString()});
         });
