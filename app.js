@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const config = require('./config');
 const jwt = require('jsonwebtoken');
 const User = require('./models/user');
+const Message = require('./models/message');
 global.TextEncoder = require("util").TextEncoder;
 
 app.use(helmet());
@@ -92,6 +93,22 @@ app.post("/api/signup", async (req, res, next) => {
             return res.status(200).send({token, privateKey: privateKey.toString()});
         });
     });
+});
+
+app.post("api/send-message", async (req, res, next) => {
+    if (!req.user) res.status(403).send("Unauthorized");
+    const {to_login, text} = req.body;
+    let toUser = await User.findOne({login: to_login});
+    if (!toUser) res.status(401).send("Login not found");
+    let buffer = Buffer.from(text);
+    let encrypted = crypto.publicEncrypt(toUser.publicKey, buffer);
+    let messageObj = new Message({
+        fromLogin: req.user.login,
+        toLogin: toUser.login,
+        message: encrypted,
+    });
+    await messageObj.save();
+    res.status(200).send("OK");
 });
 
 app.use((req, res, next) => {
