@@ -34,25 +34,25 @@ app.use(async (req, res, next) => {
 app.post("/api/login", async (req, res, next) => {
     const {login, password} = req.body;
     if (typeof login !== "string" || typeof password !== "string") {
-        return res.send(401).send("Wrong login or password");
+        return res.status(401).send("Wrong login or password");
     }
     const users = await User.find({login});
     if (users.length === 0) {
-        return res.send(401).send("Wrong login or password");
+        return res.status(401).send("Wrong login or password");
     } else if (users.length >= 2) {
         // wtf
-        return res.send(401).send("Wrong login or password");
+        return res.status(401).send("Wrong login or password");
     } else {
         let user = users[0];
         crypto.pbkdf2(password, login, 100, 64, 'sha512', (err, key) => {
             if (err) {
-                return res.send(500).send("Server error");
+                return res.status(500).send("Server error");
             }
             if (user.password === key.toString()) {
                 let token = jwt.sign({id: user._id}, config.JWT_SECRET, {expiresIn: "7d"});
-                return res.send(200).send({token});
+                return res.status(200).send({token});
             } else {
-                return res.send(401).send("Wrong login or password");
+                return res.status(401).send("Wrong login or password");
             }
         })
     }
@@ -62,11 +62,11 @@ app.post("/api/signup", async (req, res, next) => {
     const {login, password} = req.body;
     if (typeof login !== "string" || !login.match(/^[a-zA-Z_$]{3,20}$/)
      || typeof password !== "string" || password.length < 8 || password.length > 40) {
-        return res.send(401).send("Bad login or password");
+        return res.status(401).send("Bad login or password");
     }
     crypto.pbkdf2(password, login, 100, 64, 'sha512', (err, encrypted) => {
         if (err) {
-            return res.send(500).send("Server error");
+            return res.status(500).send("Server error");
         }
         crypto.generateKeyPair('rsa', {
             modulusLength: 4096,
