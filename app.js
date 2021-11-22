@@ -48,7 +48,7 @@ app.post("/api/login", async (req, res, next) => {
             if (err) {
                 return res.status(500).send("Server error");
             }
-            if (user.password === key.toString()) {
+            if (user.password === key.toString('hex')) {
                 let token = jwt.sign({id: user._id}, config.JWT_SECRET, {expiresIn: "7d"});
                 return res.status(200).send({token});
             } else {
@@ -86,7 +86,7 @@ app.post("/api/signup", async (req, res, next) => {
             if (err) {
                 return res.status(500).send("Server error");
             }
-            let user = new User({login, password: encrypted, publicKey});
+            let user = new User({login, password: encrypted.toString('hex'), publicKey});
             await user.save();
             let token = jwt.sign({id: user._id}, config.JWT_SECRET, {expiresIn: "7d"});
             return res.status(200).send({token, privateKey: privateKey.toString()});
