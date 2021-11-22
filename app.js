@@ -111,7 +111,10 @@ app.post("/api/send-message", async (req, res, next) => {
         return res.status(401).send("Bad signature");
     }
     let buffer = Buffer.from(text);
-    let encrypted = crypto.publicEncrypt(toUser.publicKey, buffer);
+    let encrypted = crypto.publicEncrypt({
+        key: toUser.publicKey,
+        oaepHash: "sha256"
+    }, buffer);
     let messageObj = new Message({
         fromLogin: req.user.login,
         toLogin: toUser.login,
