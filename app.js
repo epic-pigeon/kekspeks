@@ -96,7 +96,7 @@ app.post("/api/signup", async (req, res, next) => {
 });
 
 app.post("api/send-message", async (req, res, next) => {
-    if (!req.user) res.status(403).send("Unauthorized");
+    if (!req.user) return res.status(403).send("Unauthorized");
     const {to_login, text} = req.body;
     let toUser = await User.findOne({login: to_login});
     if (!toUser) return res.status(401).send("Login not found");
