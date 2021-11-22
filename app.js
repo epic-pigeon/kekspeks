@@ -99,7 +99,7 @@ app.post("api/send-message", async (req, res, next) => {
     if (!req.user) res.status(403).send("Unauthorized");
     const {to_login, text} = req.body;
     let toUser = await User.findOne({login: to_login});
-    if (!toUser) res.status(401).send("Login not found");
+    if (!toUser) return res.status(401).send("Login not found");
     let buffer = Buffer.from(text);
     let encrypted = crypto.publicEncrypt(toUser.publicKey, buffer);
     let messageObj = new Message({
@@ -108,7 +108,7 @@ app.post("api/send-message", async (req, res, next) => {
         message: encrypted,
     });
     await messageObj.save();
-    res.status(200).send("OK");
+    return res.status(200).send("OK");
 });
 
 app.use((req, res, next) => {
