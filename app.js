@@ -198,7 +198,7 @@ app.post("/api/create-group", async (req, res, next) => {
 });*/
 
 app.use((req, res, next) => {
-    res.status(404).end('Endpoint not found');
+    res.status(404).end(`Endpoint not found: ${req.path}`);
 });
 
 app.use((error, req, res, next) => {
