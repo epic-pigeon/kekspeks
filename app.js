@@ -35,7 +35,7 @@ function verifyFieldSignature(
     if (typeof timestamp !== "string" && typeof timestamp !== "number")
         throw createError(401, `${timestampFieldName} should be a string or a number`);
     timestamp = +timestamp;
-    if (!(Date.now() > timestamp && timestamp + 5 * 60 * 1000 > Date.now())) {
+    if (!(Date.now() > timestamp && timestamp + 10 * 1000 > Date.now())) {
         throw createError(401, "Outdated signature");
     }
     let verified = crypto.verify(
