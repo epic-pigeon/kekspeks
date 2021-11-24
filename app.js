@@ -175,7 +175,7 @@ app.post("/api/create-group", async (req, res, next) => {
     return res.status(200).send("OK");
 });
 
-app.get("/api/get-groups", async (req, res, next) => {
+app.get("/api/groups", async (req, res, next) => {
     await verifyRequestChallenge(req);
     let {skip, count} = res.body;
     skip = +skip;
@@ -193,7 +193,7 @@ app.get("/api/get-groups", async (req, res, next) => {
             }
         ]
     }, '_id ownerLogin memberLogins').skip(skip).limit(count).sort([['createdAt', 'desc']]);
-    return res.status(200).send("OK");
+    return res.status(200).send(groups);
 });
 
 /*app.post("/api/send-message", async (req, res, next) => {
