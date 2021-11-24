@@ -190,15 +190,19 @@ app.post("/api/create-group", async (req, res, next) => {
 
 app.post("/api/send-message", async (req, res, next) => {
     await verifyRequestChallenge(req);
-    let {id, message} = req.body;
-    if (typeof id !== "string" || typeof message !== "string") {
+    let {id, message, salt} = req.body;
+    if (typeof id !== "string" || typeof message !== "string" || typeof salt !== "string") {
         return res.status(401).send("Bad request");
     }
     let group = await Group.findOne(Object.assign({_id: id}, groupAccessibleTo(req.user.login)));
     if (!group) {
         return res.status(401).send("Group not found");
     }
-    group.messages.splice(0, 0, ({fromLogin: req.user.login, content: Buffer.from(message, "base64")}));
+    group.messages.splice(0, 0, {
+        fromLogin: req.user.login,
+        content: Buffer.from(message, "base64"),
+        salt: Buffer.from(salt, "base64"),
+    });
     await group.save();
     return res.status(200).send("OK");
 });

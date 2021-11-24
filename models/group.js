@@ -9,6 +9,10 @@ const messageSchema = new mongoose.Schema({
         type: Buffer,
         required: true,
     },
+    salt: {
+        type: Buffer,
+        required: true,
+    },
 }, {timestamps: true});
 
 const groupSchema = new mongoose.Schema({
