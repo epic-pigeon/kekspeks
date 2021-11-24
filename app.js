@@ -175,7 +175,7 @@ app.post("/api/create-group", async (req, res, next) => {
     return res.status(200).send("OK");
 });
 
-app.get("/api/groups", async (req, res, next) => {
+app.post("/api/groups", async (req, res, next) => {
     await verifyRequestChallenge(req);
     let {skip, count} = req.body;
     skip = +skip;
