@@ -177,11 +177,11 @@ app.post("/api/create-group", async (req, res, next) => {
 
 app.get("/api/groups", async (req, res, next) => {
     await verifyRequestChallenge(req);
-    let {skip, count} = res.body;
+    let {skip, count} = req.body;
     skip = +skip;
     count = +count;
     if (!(skip >= 0)) skip = 0;
-    if (!(count >= 0)) count = 0;
+    if (!(count >= 1)) count = 1;
     if (!(count <= 20)) count = 20;
     let groups = await Group.find({
         $or: [
