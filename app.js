@@ -50,20 +50,25 @@ function verifyFieldSignature(
     return value;
 }
 
-function getRequest(req) {
-    let result;
-    try {
-        result = JSON.parse(req.body["request"]);
-    } catch (e) {
-        throw createError(401, "Bad request");
-    }
-    if (!result instanceof Object) {
-        throw createError(401, "Bad request");
-    }
-    if (req.user) {
-        verifyFieldSignature(req, req.user.signPublicKey, "request");
-    }
-    return result;
+async function verifyRequestChallenge(req) {
+    if (!req.user) throw createError(403, "Unauthorized");
+    if (!req.user.requestChallenge || !req.user.requestChallengeTimestamp)
+        throw createError(401, "No challenge");
+    if (req.user.requestChallengeTimestamp.getTime() + 60 * 1000 < Date.now())
+        throw createError(401, "Challenge outdated");
+    let signature = req.body["challenge_signature"];
+    if (!signature || typeof signature !== "string")
+        throw createError(401, "Bad challenge signature");
+    let verified = crypto.verify(
+        "sha256",
+        Buffer.from(req.user.requestChallenge),
+        req.user.signPublicKey,
+        Buffer.from(signature, "base64")
+    );
+    req.user.requestChallenge = null;
+    req.user.requestChallengeTimestamp = null;
+    await req.user.save();
+    if (!verified) throw createError(401, "Bad challenge");
 }
 
 app.use(helmet());
@@ -147,9 +152,18 @@ app.post("/api/signup", async (req, res, next) => {
     });
 });
 
-app.post("/api/create-group", async (req, res, next) => {
+app.post("/api/challenge", async (req, res, next) => {
     if (!req.user) return res.status(403).send("Unauthorized");
-    let {name} = getRequest(req);
+    let challenge = crypto.randomBytes(64).toString("hex");
+    req.user.requestChallenge = challenge;
+    req.user.requestChallengeTimestamp = new Date();
+    await req.user.save();
+    return res.status(200).send({challenge});
+});
+
+app.post("/api/create-group", async (req, res, next) => {
+    await verifyRequestChallenge(req);
+    let {name} = req.body;
     if (typeof name !== "string") return res.status(401).send("Bad name");
     name = name.trim();
     if (name.length === 0) return res.status(401).send("Bad name");
@@ -158,6 +172,27 @@ app.post("/api/create-group", async (req, res, next) => {
         ownerLogin: req.user.login,
     });
     await group.save();
+    return res.status(200).send("OK");
+});
+
+app.get("/api/get-groups", async (req, res, next) => {
+    await verifyRequestChallenge(req);
+    let {skip, count} = res.body;
+    skip = +skip;
+    count = +count;
+    if (!(skip >= 0)) skip = 0;
+    if (!(count >= 0)) count = 0;
+    if (!(count <= 20)) count = 20;
+    let groups = await Group.find({
+        $or: [
+            {
+                ownerLogin: req.user.login
+            },
+            {
+                memberLogins: { $elemMatch: req.user.login }
+            }
+        ]
+    }, '_id ownerLogin memberLogins').skip(skip).limit(count).sort([['createdAt', 'desc']]);
     return res.status(200).send("OK");
 });
 

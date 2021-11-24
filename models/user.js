@@ -18,6 +18,14 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    requestChallenge: {
+        type: String,
+        required: false,
+    },
+    requestChallengeTimestamp: {
+        type: Date,
+        required: false,
+    },
 }, {timestamps: true});
 
 module.exports = mongoose.model('User', userSchema);
