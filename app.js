@@ -202,7 +202,7 @@ app.post("/api/user", async (req, res, next) => {
     if (!login || typeof login !== "string") {
         return res.status(401).send("Bad login");
     }
-    let result = User.findOne({login}, ['login', 'signPublicKey', 'messagePublicKey']);
+    let result = await User.findOne({login}, ['login', 'signPublicKey', 'messagePublicKey']);
     if (!result) return res.status(401).send("Bad login");
     return res.status(200).send(result);
 });
