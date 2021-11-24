@@ -172,7 +172,7 @@ app.post("/api/create-group", async (req, res, next) => {
         ownerLogin: req.user.login,
     });
     await group.save();
-    return res.status(200).send("OK");
+    return res.status(200).send({_id: group._id});
 });
 
 app.post("/api/groups", async (req, res, next) => {
