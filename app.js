@@ -189,7 +189,7 @@ app.post("/api/groups", async (req, res, next) => {
                 ownerLogin: req.user.login
             },
             {
-                memberLogins: { $elemMatch: req.user.login }
+                memberLogins: { $elemMatch: { $in: [req.user.login] } }
             }
         ]
     }, '_id ownerLogin memberLogins').skip(skip).limit(count).sort([['createdAt', 'desc']]);
