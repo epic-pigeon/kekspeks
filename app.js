@@ -193,7 +193,7 @@ app.get("/api/groups", async (req, res, next) => {
             }
         ]
     }, '_id ownerLogin memberLogins').skip(skip).limit(count).sort([['createdAt', 'desc']]);
-    return res.status(200).send(groups);
+    return res.status(200).send({groups});
 });
 
 /*app.post("/api/send-message", async (req, res, next) => {
