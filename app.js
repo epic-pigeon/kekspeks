@@ -71,6 +71,19 @@ async function verifyRequestChallenge(req) {
     if (!verified) throw createError(401, "Bad challenge");
 }
 
+function groupAccessibleTo(login) {
+    return {
+        $or: [
+            {
+                ownerLogin: login
+            },
+            {
+                memberLogins: { $elemMatch: { $in: [login] } }
+            }
+        ]
+    };
+}
+
 app.use(helmet());
 app.use(cors({
     credentials: false,
@@ -175,6 +188,21 @@ app.post("/api/create-group", async (req, res, next) => {
     return res.status(200).send({_id: group._id});
 });
 
+app.post("/api/send-message", async (req, res, next) => {
+    await verifyRequestChallenge(req);
+    let {id, message} = req.body;
+    if (typeof id !== "string" || typeof message !== "string") {
+        return res.status(401).send("Bad request");
+    }
+    let group = await Group.findOne(Object.assign({_id: id}, groupAccessibleTo(req.user.login)));
+    if (!group) {
+        return res.status(401).send("Group not found");
+    }
+    group.messages.push({fromLogin: req.user.login, content: Buffer.from(message, "base64")});
+    await group.save();
+    return res.status(200).send("OK");
+});
+
 app.post("/api/groups", async (req, res, next) => {
     await verifyRequestChallenge(req);
     let {skip, count} = req.body;
@@ -183,16 +211,7 @@ app.post("/api/groups", async (req, res, next) => {
     if (!(skip >= 0)) skip = 0;
     if (!(count >= 1)) count = 1;
     if (!(count <= 20)) count = 20;
-    let groups = await Group.find({
-        $or: [
-            {
-                ownerLogin: req.user.login
-            },
-            {
-                memberLogins: { $elemMatch: { $in: [req.user.login] } }
-            }
-        ]
-    }, '_id name ownerLogin memberLogins').skip(skip).limit(count).sort([['updatedAt', 'desc']]);
+    let groups = await Group.find(groupAccessibleTo(req.user.login), '_id name ownerLogin memberLogins').skip(skip).limit(count).sort([['updatedAt', 'desc']]);
     return res.status(200).send({groups});
 });
 
