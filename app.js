@@ -192,8 +192,19 @@ app.post("/api/groups", async (req, res, next) => {
                 memberLogins: { $elemMatch: { $in: [req.user.login] } }
             }
         ]
-    }, '_id name ownerLogin memberLogins').skip(skip).limit(count).sort([['createdAt', 'desc']]);
+    }, '_id name ownerLogin memberLogins').skip(skip).limit(count).sort([['updatedAt', 'desc']]);
     return res.status(200).send({groups});
+});
+
+app.post("/api/user", async (req, res, next) => {
+    await verifyRequestChallenge(req);
+    let {login} = req.body;
+    if (!login || typeof login !== "string") {
+        return res.status(401).send("Bad login");
+    }
+    let result = User.findOne({login}, ['login', 'signPublicKey', 'messagePublicKey']);
+    if (!result) return res.status(401).send("Bad login");
+    return res.status(200).send(result);
 });
 
 /*app.post("/api/send-message", async (req, res, next) => {
