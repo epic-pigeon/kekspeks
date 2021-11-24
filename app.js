@@ -198,7 +198,7 @@ app.post("/api/send-message", async (req, res, next) => {
     if (!group) {
         return res.status(401).send("Group not found");
     }
-    group.messages.push({fromLogin: req.user.login, content: Buffer.from(message, "base64")});
+    group.messages.splice(0, 0, ({fromLogin: req.user.login, content: Buffer.from(message, "base64")}));
     await group.save();
     return res.status(200).send("OK");
 });
@@ -213,6 +213,21 @@ app.post("/api/groups", async (req, res, next) => {
     if (!(count <= 20)) count = 20;
     let groups = await Group.find(groupAccessibleTo(req.user.login), '_id name ownerLogin memberLogins').skip(skip).limit(count).sort([['updatedAt', 'desc']]);
     return res.status(200).send({groups});
+});
+
+app.post("/api/messages", async (req, res, next) => {
+    await verifyRequestChallenge(req);
+    let {group_id: groupId, skip, count} = req.body;
+    skip = +skip;
+    count = +count;
+    if (!(skip >= 0)) skip = 0;
+    if (!(count >= 1)) count = 1;
+    if (!(count <= 50)) count = 50;
+    let group = await Group.findOne(Object.assign({_id: groupId}, groupAccessibleTo(req.user.login)), {messages: {$slice: [skip, count]}});
+    if (!group) {
+        return res.status(401).send("Group not found");
+    }
+    return res.status(200).send({messages: group.messages});
 });
 
 app.post("/api/user", async (req, res, next) => {
