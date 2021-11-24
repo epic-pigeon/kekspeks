@@ -227,11 +227,7 @@ app.post("/api/messages", async (req, res, next) => {
     if (!group) {
         return res.status(401).send("Group not found");
     }
-    let result = group.messages.toObject();
-    for (let e of result) {
-        e.content = Buffer.from(e.content.data).toString("base64");
-    }
-    return res.status(200).send({messages: result});
+    return res.status(200).send({messages: group.messages});
 });
 
 app.post("/api/user", async (req, res, next) => {
