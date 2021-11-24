@@ -192,7 +192,7 @@ app.post("/api/groups", async (req, res, next) => {
                 memberLogins: { $elemMatch: { $in: [req.user.login] } }
             }
         ]
-    }, '_id ownerLogin memberLogins').skip(skip).limit(count).sort([['createdAt', 'desc']]);
+    }, '_id name ownerLogin memberLogins').skip(skip).limit(count).sort([['createdAt', 'desc']]);
     return res.status(200).send({groups});
 });
 
