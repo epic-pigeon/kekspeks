@@ -97,7 +97,7 @@ app.use(async (req, res, next) => {
     const accessToken = req.body['access_token'];
     if (accessToken && typeof accessToken === "string") {
         const {id} = jwt.verify(accessToken, config.JWT_SECRET);
-        let user = await User.findById(id, {invitations: 0});
+        let user = await User.findById(id);
         if (!user) createError(401, "Bad user ID");
         req.user = user;
         return next();
