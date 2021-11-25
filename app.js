@@ -225,17 +225,25 @@ app.post("/api/get-invites", async (req, res, next) => {
     return res.status(200).send({invitations: user.invitations});
 });
 
-app.post("/api/accept-invite", async (req, res, next) => {
+app.post("/api/remove-invite", async (req, res, next) => {
     await verifyRequestChallenge(req);
-    let {group_id: groupId} = req.body;
-    if (typeof groupId !== "string") {
-        res.status(401).send("Bad group id");
+    let {group_id: groupId, accept} = req.body;
+    if (typeof accept === "string") accept = accept === "true";
+    if (typeof groupId !== "string" || typeof accept !== "boolean") {
+        return res.status(401).send("Bad request");
+    }
+    let group = await Group.findById(groupId, 'memberLogins');
+    if (!group) {
+        return res.status(401).send("Group does not exist");
     }
     let l = req.user.invitations.length;
     req.user.invitations = req.user.invitations.filter(i => i.groupId !== groupId);
     await req.user.save();
     if (req.user.invitations.length === l) {
         return res.status(401).send("No such invitation");
+    }
+    if (accept) {
+        group.memberLogins = [...new Set(...group.memberLogins, req.user.login)]
     }
     return res.status(200).send("OK");
 });
@@ -246,16 +254,21 @@ app.post("/api/send-message", async (req, res, next) => {
     if (typeof id !== "string" || typeof message !== "string" || typeof salt !== "string") {
         return res.status(401).send("Bad request");
     }
-    let group = await Group.findOne(Object.assign({_id: id}, groupAccessibleTo(req.user.login)));
+    let group = await Group.findOneAndUpdate(Object.assign({_id: id}, groupAccessibleTo(req.user.login)), {
+        $push: {
+            messages: {
+                $each: [{
+                    fromLogin: req.user.login,
+                    content: Buffer.from(message, "base64"),
+                    salt: Buffer.from(salt, "base64"),
+                }],
+                $position: 0
+            }
+        }
+    }, {projection: 'name'});
     if (!group) {
         return res.status(401).send("Group not found");
     }
-    group.messages.splice(0, 0, {
-        fromLogin: req.user.login,
-        content: Buffer.from(message, "base64"),
-        salt: Buffer.from(salt, "base64"),
-    });
-    await group.save();
     return res.status(200).send("OK");
 });
 
@@ -292,7 +305,7 @@ app.post("/api/user", async (req, res, next) => {
     if (!login || typeof login !== "string") {
         return res.status(401).send("Bad login");
     }
-    let result = await User.findOne({login}, ['login', 'signPublicKey', 'messagePublicKey']);
+    let result = await User.findOne({login}, 'login');
     if (!result) return res.status(401).send("Bad login");
     return res.status(200).send(result);
 });
