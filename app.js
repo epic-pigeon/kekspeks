@@ -97,7 +97,7 @@ app.use(async (req, res, next) => {
     const accessToken = req.body['access_token'];
     if (accessToken && typeof accessToken === "string") {
         const {id} = jwt.verify(accessToken, config.JWT_SECRET);
-        let user = await User.findById(id);
+        let user = await User.findById(id, {invitations: 0});
         if (!user) createError(401, "Bad user ID");
         req.user = user;
         return next();
@@ -186,6 +186,58 @@ app.post("/api/create-group", async (req, res, next) => {
     });
     await group.save();
     return res.status(200).send({_id: group._id});
+});
+
+app.post("/api/invite", async (req, res, next) => {
+    await verifyRequestChallenge(req);
+    let {login, group_id: groupId, key} = req.body;
+    if (typeof login !== "string" || typeof groupId !== "string" || typeof key !== "string") {
+        return res.status(401).send("Bad data");
+    }
+    let group = await Group.findOne({_id: groupId, ownerLogin: req.user.login});
+    if (!group) {
+        return res.status(401).send("Group not found or you are not the owner");
+    }
+    let user = await User.findOne({login, invitations: {$not: {$elemMatch: {groupId}}}});
+    if (!user) {
+        return res.status(401).send("No such user exists or user already invited");
+    }
+    user.invitations.splice(0, 0, {
+        groupId: group._id,
+        key: Buffer.from(key, 'base64'),
+    });
+    await user.save();
+    return res.status(200).send("OK");
+});
+
+app.post("/api/get-invites", async (req, res, next) => {
+    await verifyRequestChallenge(req);
+    let {skip, count} = req.body;
+    skip = +skip;
+    count = +count;
+    if (!(skip >= 0)) skip = 0;
+    if (!(count >= 1)) count = 1;
+    if (!(count <= 20)) count = 20;
+    let user = await User.findOne({login: req.user.login}, {invitations: {$slice: [skip, count]}});
+    if (!user) {
+        return res.status(500).send("hm");
+    }
+    return res.status(200).send({invitations: user.invitations});
+});
+
+app.post("/api/accept-invite", async (req, res, next) => {
+    await verifyRequestChallenge(req);
+    let {group_id: groupId} = req.body;
+    if (typeof groupId !== "string") {
+        res.status(401).send("Bad group id");
+    }
+    let l = req.user.invitations.length;
+    req.user.invitations = req.user.invitations.filter(i => i.groupId !== groupId);
+    await req.user.save();
+    if (req.user.invitations.length === l) {
+        return res.status(401).send("No such invitation");
+    }
+    return res.status(200).send("OK");
 });
 
 app.post("/api/send-message", async (req, res, next) => {

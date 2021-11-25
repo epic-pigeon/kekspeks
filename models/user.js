@@ -1,5 +1,16 @@
 const mongoose = require('mongoose');
 
+const invitationSchema = new mongoose.Schema({
+    groupId: {
+        type: String,
+        required: true,
+    },
+    key: {
+        type: Buffer,
+        required: true,
+    },
+}, {timestamps: true});
+
 const userSchema = new mongoose.Schema({
     login: {
         type: String,
@@ -26,6 +37,7 @@ const userSchema = new mongoose.Schema({
         type: Date,
         required: false,
     },
+    invitations: [invitationSchema],
 }, {timestamps: true});
 
 module.exports = mongoose.model('User', userSchema);
