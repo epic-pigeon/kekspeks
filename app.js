@@ -104,6 +104,11 @@ app.use(async (req, res, next) => {
     } else return next();
 });
 
+app.post("/api/me", async (req, res, next) => {
+    await verifyRequestChallenge(req);
+    return res.status(200).send({login: req.user.login})
+});
+
 app.post("/api/login", async (req, res, next) => {
     const {login, password} = req.body;
     if (typeof login !== "string" || typeof password !== "string") {
