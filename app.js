@@ -28,15 +28,15 @@ function verifyFieldSignature(
     timestampFieldName = signatureFieldName + "_timestamp",
 ) {
     let value = req.body[fieldName];
-    if (typeof value !== "string") throw createError(401, `${fieldName} should be a string`);
+    if (typeof value !== "string") throw createError(400, `${fieldName} should be a string`);
     let signature = req.body[signatureFieldName];
-    if (typeof signature !== "string") throw createError(401, `${signatureFieldName} should be a string`);
+    if (typeof signature !== "string") throw createError(400, `${signatureFieldName} should be a string`);
     let timestamp = req.body[timestampFieldName];
     if (typeof timestamp !== "string" && typeof timestamp !== "number")
-        throw createError(401, `${timestampFieldName} should be a string or a number`);
+        throw createError(400, `${timestampFieldName} should be a string or a number`);
     timestamp = +timestamp;
     if (!(Date.now() > timestamp && timestamp + 10 * 1000 > Date.now())) {
-        throw createError(401, "Outdated signature");
+        throw createError(400, "Outdated signature");
     }
     let verified = crypto.verify(
         "sha256",
@@ -45,20 +45,20 @@ function verifyFieldSignature(
         Buffer.from(signature, "base64")
     );
     if (!verified) {
-        throw createError(401, "Bad signature");
+        throw createError(400, "Bad signature");
     }
     return value;
 }
 
 async function verifyRequestChallenge(req) {
-    if (!req.user) throw createError(403, "Unauthorized");
+    if (!req.user) throw createError(401, "Unauthorized");
     if (!req.user.requestChallenge || !req.user.requestChallengeTimestamp)
-        throw createError(401, "No challenge");
+        throw createError(400, "No challenge");
     if (req.user.requestChallengeTimestamp.getTime() + 60 * 1000 < Date.now())
-        throw createError(401, "Challenge outdated");
+        throw createError(400, "Challenge outdated");
     let signature = req.body["challenge_signature"];
     if (!signature || typeof signature !== "string")
-        throw createError(401, "Bad challenge signature");
+        throw createError(400, "Bad challenge signature");
     let verified = crypto.verify(
         "sha256",
         Buffer.from(req.user.requestChallenge),
@@ -68,7 +68,7 @@ async function verifyRequestChallenge(req) {
     req.user.requestChallenge = null;
     req.user.requestChallengeTimestamp = null;
     await req.user.save();
-    if (!verified) throw createError(401, "Bad challenge");
+    if (!verified) throw createError(400, "Bad challenge");
 }
 
 function groupAccessibleTo(login) {
@@ -98,7 +98,7 @@ app.use(async (req, res, next) => {
     if (accessToken && typeof accessToken === "string") {
         const {id} = jwt.verify(accessToken, config.JWT_SECRET);
         let user = await User.findById(id);
-        if (!user) createError(401, "Bad user ID");
+        if (!user) createError(400, "Bad user ID");
         req.user = user;
         return next();
     } else return next();
@@ -112,11 +112,11 @@ app.post("/api/me", async (req, res, next) => {
 app.post("/api/login", async (req, res, next) => {
     const {login, password} = req.body;
     if (typeof login !== "string" || typeof password !== "string") {
-        return res.status(401).send("Wrong login or password");
+        return res.status(40).send("Wrong login or password");
     }
     const user = await User.findOne({login});
     if (!user) {
-        return res.status(401).send("Wrong login or password");
+        return res.status(40).send("Wrong login or password");
     } else {
         verifyFieldSignature(req, user.signPublicKey, "login");
         crypto.pbkdf2(password, login, 50_000, 64, 'sha512', (err, key) => {
@@ -127,7 +127,7 @@ app.post("/api/login", async (req, res, next) => {
                 let token = jwt.sign({id: user._id}, config.JWT_SECRET, {expiresIn: "7d"});
                 return res.status(200).send({token});
             } else {
-                return res.status(401).send("Wrong login or password");
+                return res.status(40).send("Wrong login or password");
             }
         })
     }
@@ -137,21 +137,21 @@ app.post("/api/signup", async (req, res, next) => {
     const {login, password, sign_public_key, message_public_key} = req.body;
     if (typeof login !== "string" || !login.match(/^[a-zA-Z_$]{3,20}$/)
      || typeof password !== "string" || password.length < 8 || password.length > 40) {
-        return res.status(401).send("Bad login or password");
+        return res.status(40).send("Bad login or password");
     }
     let user = await User.findOne({login});
-    if (user) return res.status(401).send("This login already exists");
-    if (typeof sign_public_key !== "string") return res.status(401).send("Invalid sign key");
+    if (user) return res.status(40).send("This login already exists");
+    if (typeof sign_public_key !== "string") return res.status(40).send("Invalid sign key");
     try {
         crypto.createPublicKey(sign_public_key);
     } catch (e) {
-        return res.status(401).send("Invalid sign key");
+        return res.status(40).send("Invalid sign key");
     }
-    if (typeof message_public_key !== "string") return res.status(401).send("Invalid message key");
+    if (typeof message_public_key !== "string") return res.status(40).send("Invalid message key");
     try {
         crypto.createPublicKey(message_public_key);
     } catch (e) {
-        return res.status(401).send("Invalid message key");
+        return res.status(40).send("Invalid message key");
     }
     verifyFieldSignature(req, sign_public_key, "login");
     crypto.pbkdf2(password, login, 50_000, 64, 'sha512', async (err, encrypted) => {
@@ -182,9 +182,9 @@ app.post("/api/challenge", async (req, res, next) => {
 app.post("/api/create-group", async (req, res, next) => {
     await verifyRequestChallenge(req);
     let {name} = req.body;
-    if (typeof name !== "string") return res.status(401).send("Bad name");
+    if (typeof name !== "string") return res.status(40).send("Bad name");
     name = name.trim();
-    if (name.length === 0) return res.status(401).send("Bad name");
+    if (name.length === 0) return res.status(40).send("Bad name");
     let group = new Group({
         name: name,
         ownerLogin: req.user.login,
@@ -202,15 +202,21 @@ app.post("/api/invite", async (req, res, next) => {
     await verifyRequestChallenge(req);
     let {login, group_id: groupId, key} = req.body;
     if (typeof login !== "string" || typeof groupId !== "string" || typeof key !== "string") {
-        return res.status(401).send("Bad data");
+        return res.status(40).send("Bad data");
     }
-    let group = await Group.findOne({_id: groupId, ownerLogin: req.user.login});
+    let group = await Group.findOne({_id: groupId, ownerLogin: req.user.login}, {messages: 0});
     if (!group) {
-        return res.status(401).send("Group not found or you are not the owner");
+        return res.status(40).send("Group not found or you are not the owner");
+    }
+    if (login === req.body.login) {
+        return res.status(40).send(":)");
+    }
+    if (group.memberLogins.indexOf(login) !== -1) {
+        return res.status(40).send("The user is already in the group");
     }
     let user = await User.findOne({login, invitations: {$not: {$elemMatch: {groupId}}}});
     if (!user) {
-        return res.status(401).send("No such user exists or user already invited");
+        return res.status(40).send("No such user exists or user already invited");
     }
     user.invitations.splice(0, 0, {
         groupId: group._id,
@@ -240,17 +246,17 @@ app.post("/api/remove-invite", async (req, res, next) => {
     let {group_id: groupId, accept} = req.body;
     if (typeof accept === "string") accept = accept === "true";
     if (typeof groupId !== "string" || typeof accept !== "boolean") {
-        return res.status(401).send("Bad request");
+        return res.status(40).send("Bad request");
     }
     let group = await Group.findById(groupId, 'name ownerLogin memberLogins');
     if (!group) {
-        return res.status(401).send("Group does not exist");
+        return res.status(40).send("Group does not exist");
     }
     let l = req.user.invitations.length;
     req.user.invitations = req.user.invitations.filter(i => i.groupId !== groupId);
     await req.user.save();
     if (req.user.invitations.length === l) {
-        return res.status(401).send("No such invitation");
+        return res.status(40).send("No such invitation");
     }
     if (accept) {
         group.memberLogins = [...new Set([...group.memberLogins, req.user.login])];
@@ -263,7 +269,7 @@ app.post("/api/send-message", async (req, res, next) => {
     await verifyRequestChallenge(req);
     let {id, message, salt} = req.body;
     if (typeof id !== "string" || typeof message !== "string" || typeof salt !== "string") {
-        return res.status(401).send("Bad request");
+        return res.status(40).send("Bad request");
     }
     let group = await Group.findOneAndUpdate(Object.assign({_id: id}, groupAccessibleTo(req.user.login)), {
         $push: {
@@ -278,7 +284,7 @@ app.post("/api/send-message", async (req, res, next) => {
         }
     }, {new: true, projection: {messages: {$slice: [0, 1]}}});
     if (!group) {
-        return res.status(401).send("Group not found");
+        return res.status(40).send("Group not found");
     }
     return res.status(200).send(group.messages[0]);
 });
@@ -305,7 +311,7 @@ app.post("/api/messages", async (req, res, next) => {
     if (!(count <= 50)) count = 50;
     let group = await Group.findOne(Object.assign({_id: groupId}, groupAccessibleTo(req.user.login)), {messages: {$slice: [skip, count]}});
     if (!group) {
-        return res.status(401).send("Group not found");
+        return res.status(40).send("Group not found");
     }
     return res.status(200).send({messages: group.messages});
 });
@@ -314,11 +320,35 @@ app.post("/api/user", async (req, res, next) => {
     await verifyRequestChallenge(req);
     let {login} = req.body;
     if (!login || typeof login !== "string") {
-        return res.status(401).send("Bad login");
+        return res.status(40).send("Bad login");
     }
     let result = await User.findOne({login}, 'login signPublicKey messagePublicKey');
-    if (!result) return res.status(401).send("Bad login");
+    if (!result) return res.status(40).send("Bad login");
     return res.status(200).send(result);
+});
+
+let polling = {};
+
+function notify(userLogin, event) {
+    if (!polling[userLogin]) return;
+    while (polling[userLogin].length > 0) {
+        polling[userLogin].shift()(event);
+    }
+    polling[userLogin] = undefined;
+}
+
+app.post("/api/poll", async (req, res, next) => {
+    await verifyRequestChallenge(req);
+    if (!polling[req.user.login]) polling[req.user.login] = [];
+    let func = event => {
+        res.status(200).send(event);
+    }
+    polling[req.user.login].push(func);
+    setTimeout(() => {
+        let idx = polling[req.user.login].indexOf(func);
+        polling[req.user.login].splice(idx, 1);
+        res.status(408).send("Poll timeout");
+    }, 60_000);
 });
 
 /*app.post("/api/send-message", async (req, res, next) => {
