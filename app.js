@@ -369,14 +369,18 @@ function notify(userLogin, event) {
 app.post("/api/poll", async (req, res, next) => {
     await verifyRequestChallenge(req);
     if (!polling[req.user.login]) polling[req.user.login] = [];
+    let resolved = false;
     let func = event => {
         res.status(200).send(event);
+        resolved = true;
     }
     polling[req.user.login].push(func);
     setTimeout(() => {
-        let idx = polling[req.user.login].indexOf(func);
-        polling[req.user.login].splice(idx, 1);
-        res.status(408).send("Poll timeout");
+        if (!resolved) {
+            let idx = polling[req.user.login].indexOf(func);
+            polling[req.user.login].splice(idx, 1);
+            res.status(408).send("Poll timeout");
+        }
     }, 60_000);
 });
 
