@@ -253,7 +253,8 @@ app.post("/api/remove-invite", async (req, res, next) => {
         return res.status(401).send("No such invitation");
     }
     if (accept) {
-        group.memberLogins = [...new Set([...group.memberLogins, req.user.login])]
+        group.memberLogins = [...new Set([...group.memberLogins, req.user.login])];
+        await group.save();
     }
     return res.status(200).send(group);
 });
