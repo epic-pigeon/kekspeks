@@ -175,6 +175,13 @@ app.post("/api/signup", async (req, res, next) => {
 app.post("/api/challenge", async (req, res, next) => {
     if (!req.user) return res.status(403).send("Unauthorized");
     let challenge = crypto.randomBytes(64).toString("hex");
+    for (let i = 0; i < req.user.requestChallenges.length; i++) {
+        if (req.user.requestChallengeTimestamps[i].getTime() + 60 * 1000 < Date.now()) {
+            req.user.requestChallenges.splice(i, 1);
+            req.user.requestChallengeTimestamps.splice(i, 1);
+            i--;
+        }
+    }
     if (req.user.requestChallenges.length < 10) {
         req.user.requestChallenges.push(challenge);
         req.user.requestChallengeTimestamps.push(new Date());
