@@ -185,7 +185,12 @@ app.post("/api/create-group", async (req, res, next) => {
         ownerLogin: req.user.login,
     });
     await group.save();
-    return res.status(200).send({_id: group._id});
+    return res.status(200).send({
+        _id: group._id,
+        name: group.name,
+        ownerLogin: group.ownerLogin,
+        memberLogins: group.memberLogins,
+    });
 });
 
 app.post("/api/invite", async (req, res, next) => {
@@ -265,11 +270,11 @@ app.post("/api/send-message", async (req, res, next) => {
                 $position: 0
             }
         }
-    }, {projection: 'name'});
+    }, {new: true, projection: {messages: {$slice: [0, 1]}}});
     if (!group) {
         return res.status(401).send("Group not found");
     }
-    return res.status(200).send("OK");
+    return res.status(200).send(group.messages[0]);
 });
 
 app.post("/api/groups", async (req, res, next) => {
