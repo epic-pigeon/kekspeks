@@ -29,14 +29,12 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    requestChallenge: {
+    requestChallenges: [{
         type: String,
-        required: false,
-    },
-    requestChallengeTimestamp: {
+    }],
+    requestChallengeTimestamps: [{
         type: Date,
-        required: false,
-    },
+    }],
     invitations: [invitationSchema],
 }, {timestamps: true});
 

@@ -52,21 +52,23 @@ function verifyFieldSignature(
 
 async function verifyRequestChallenge(req) {
     if (!req.user) throw createError(401, "Unauthorized");
-    if (!req.user.requestChallenge || !req.user.requestChallengeTimestamp)
-        throw createError(400, "No challenge");
-    if (req.user.requestChallengeTimestamp.getTime() + 60 * 1000 < Date.now())
+    if (req.user.req)
+        throw createError(400, "N");
+    let {challenge_signature: signature, challenge} = req.body;
+    if (typeof signature !== "string" || typeof challenge !== "string")
+        throw createError(400, "Bad data");
+    let idx = req.user.requestChallenges.indexOf(challenge);
+    if (idx === -1) throw createError(400, "Challenge not found");
+    if (req.user.requestChallengeTimestamps[idx].getTime() + 60 * 1000 < Date.now())
         throw createError(400, "Challenge outdated");
-    let signature = req.body["challenge_signature"];
-    if (!signature || typeof signature !== "string")
-        throw createError(400, "Bad challenge signature");
     let verified = crypto.verify(
         "sha256",
-        Buffer.from(req.user.requestChallenge),
+        Buffer.from(challenge),
         req.user.signPublicKey,
         Buffer.from(signature, "base64")
     );
-    req.user.requestChallenge = null;
-    req.user.requestChallengeTimestamp = null;
+    req.user.requestChallenges.splice(idx, 1);
+    req.user.requestChallengeTimestamps.splice(idx, 1);
     await req.user.save();
     if (!verified) throw createError(400, "Bad challenge");
 }
@@ -173,8 +175,12 @@ app.post("/api/signup", async (req, res, next) => {
 app.post("/api/challenge", async (req, res, next) => {
     if (!req.user) return res.status(403).send("Unauthorized");
     let challenge = crypto.randomBytes(64).toString("hex");
-    req.user.requestChallenge = challenge;
-    req.user.requestChallengeTimestamp = new Date();
+    if (req.user.requestChallenges.length < 10) {
+        req.user.requestChallenges.push(challenge);
+        req.user.requestChallengeTimestamps.push(new Date());
+    } else {
+        res.status(400).send("Too many challenges");
+    }
     await req.user.save();
     return res.status(200).send({challenge});
 });
