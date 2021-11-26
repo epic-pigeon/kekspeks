@@ -242,7 +242,7 @@ app.post("/api/remove-invite", async (req, res, next) => {
     if (typeof groupId !== "string" || typeof accept !== "boolean") {
         return res.status(401).send("Bad request");
     }
-    let group = await Group.findById(groupId, {messages: 0});
+    let group = await Group.findById(groupId, 'name ownerLogin memberLogins');
     if (!group) {
         return res.status(401).send("Group does not exist");
     }
@@ -255,7 +255,7 @@ app.post("/api/remove-invite", async (req, res, next) => {
     if (accept) {
         group.memberLogins = [...new Set([...group.memberLogins, req.user.login])]
     }
-    return res.status(200).send("OK");
+    return res.status(200).send(group);
 });
 
 app.post("/api/send-message", async (req, res, next) => {
