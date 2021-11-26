@@ -214,16 +214,29 @@ app.post("/api/invite", async (req, res, next) => {
     if (group.memberLogins.indexOf(login) !== -1) {
         return res.status(40).send("The user is already in the group");
     }
-    let user = await User.findOne({login, invitations: {$not: {$elemMatch: {groupId}}}});
+    let user = await User.findOneAndUpdate(
+        {login, invitations: {$not: {$elemMatch: {groupId}}}},
+        {
+            $push: {
+                invitations: {
+                    $each: [{
+                        groupId: group._id,
+                        key: Buffer.from(key, 'base64'),
+                    }],
+                    $position: 0
+                }
+            }
+        },
+        {new: true, projection: {login, invitations: {$slice: [0, 1]}}}
+    );
     if (!user) {
         return res.status(40).send("No such user exists or user already invited");
     }
-    user.invitations.splice(0, 0, {
-        groupId: group._id,
-        key: Buffer.from(key, 'base64'),
+    notify(req.body.login, {
+        type: "invitation",
+        invitation: user.invitations[0]
     });
-    await user.save();
-    return res.status(200).send("OK");
+    return res.status(200).send(user.invitations[0]);
 });
 
 app.post("/api/get-invites", async (req, res, next) => {
@@ -282,9 +295,15 @@ app.post("/api/send-message", async (req, res, next) => {
                 $position: 0
             }
         }
-    }, {new: true, projection: {messages: {$slice: [0, 1]}}});
+    }, {new: true, projection: {ownerLogin: 1, memberLogins: 1, messages: {$slice: [0, 1]}}});
     if (!group) {
         return res.status(40).send("Group not found");
+    }
+    for (let login of [group.ownerLogin, ...group.memberLogins]) {
+        notify(login, {
+            type: "message",
+            message: group.messages[0],
+        });
     }
     return res.status(200).send(group.messages[0]);
 });
