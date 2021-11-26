@@ -308,7 +308,11 @@ app.post("/api/send-message", async (req, res, next) => {
     for (let login of [group.ownerLogin, ...group.memberLogins]) {
         notify(login, {
             type: "message",
-            message: group.messages[0],
+            message: Object.assign(
+                {},
+                group.messages[0].toObject(),
+                {groupId: group._id}
+            ),
         });
     }
     return res.status(200).send(group.messages[0]);
