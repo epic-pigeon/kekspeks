@@ -315,11 +315,8 @@ app.post("/api/send-message", async (req, res, next) => {
     for (let login of [group.ownerLogin, ...group.memberLogins]) {
         notify(login, {
             type: "message",
-            message: Object.assign(
-                {},
-                group.messages[0].toObject(),
-                {groupId: group._id}
-            ),
+            message: group.messages[0],
+            groupId: group._id,
         });
     }
     return res.status(200).send(group.messages[0]);
@@ -349,7 +346,7 @@ app.post("/api/messages", async (req, res, next) => {
     if (!group) {
         return res.status(400).send("Group not found");
     }
-    return res.status(200).send({messages: group.messages.toObject()});
+    return res.status(200).send({messages: group.messages});
 });
 
 app.post("/api/user", async (req, res, next) => {
