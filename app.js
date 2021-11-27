@@ -349,7 +349,7 @@ app.post("/api/messages", async (req, res, next) => {
     if (!group) {
         return res.status(400).send("Group not found");
     }
-    return res.status(200).send({messages: group.messages});
+    return res.status(200).send({messages: group.messages.toObject()});
 });
 
 app.post("/api/user", async (req, res, next) => {
