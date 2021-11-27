@@ -385,7 +385,7 @@ app.post("/api/poll", async (req, res, next) => {
             polling[req.user.login].splice(idx, 1);
             res.status(408).send("Poll timeout");
         }
-    }, 60_000);
+    }, 40_000);
 });
 
 /*app.post("/api/send-message", async (req, res, next) => {
