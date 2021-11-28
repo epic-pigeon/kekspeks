@@ -8,6 +8,7 @@ const config = require('./config');
 const jwt = require('jsonwebtoken');
 const User = require('./models/user');
 const Group = require('./models/group');
+const path = require('path');
 global.TextEncoder = require("util").TextEncoder;
 
 function createError(status, msg) {
@@ -86,6 +87,7 @@ function groupAccessibleTo(login) {
     };
 }
 
+app.use(express.static('build'));
 app.use(helmet());
 app.use(cors({
     credentials: false,
@@ -221,7 +223,7 @@ app.post("/api/invite", async (req, res, next) => {
     if (!group) {
         return res.status(400).send("Group not found or you are not the owner");
     }
-    if (login === req.body.login) {
+    if (login === req.user.login) {
         return res.status(400).send(":)");
     }
     if (group.memberLogins.indexOf(login) !== -1) {
@@ -423,6 +425,11 @@ app.post("/api/poll", async (req, res, next) => {
     await messageObj.save();
     return res.status(200).send("OK");
 });*/
+
+app.get('*', (req, res) => {
+    const indexPath = path.join(__dirname, 'build', 'index.html');
+    res.sendFile(indexPath);
+});
 
 app.use((req, res, next) => {
     res.status(404).end(`Endpoint not found: ${req.path}`);
